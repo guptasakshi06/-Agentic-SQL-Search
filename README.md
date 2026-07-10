@@ -80,8 +80,8 @@ User Question
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/Sumanth077/Hands-On-AI-Engineering.git
-cd Hands-On-AI-Engineering/ai_agents/agentic_sql_search
+git clone https://github.com/guptasakshi06/-Agentic-SQL-Search
+
 ```
 
 ### 2. Set Up Environment Variables
