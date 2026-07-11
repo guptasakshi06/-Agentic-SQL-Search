@@ -4,6 +4,7 @@ Run this file directly to (re)create the database: python database.py
 """
 
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 DB_PATH = Path(__file__).parent / "data" / "ecommerce.db"
@@ -226,41 +227,42 @@ ORDER_ITEMS = [
 
 
 def init_db():
-    """Create tables and seed sample data if the database doesn't exist yet."""
+    """Create and seed the bundled database safely across concurrent startups."""
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("PRAGMA foreign_keys = ON")
-    cursor = conn.cursor()
+    with closing(sqlite3.connect(DB_PATH, timeout=30)) as connection:
+        connection.execute("PRAGMA foreign_keys = ON")
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            cursor = connection.cursor()
 
-    for stmt in CREATE_TABLES:
-        cursor.execute(stmt)
-    conn.commit()
+            for statement in CREATE_TABLES:
+                cursor.execute(statement)
 
-    # Only seed if tables are empty
-    if cursor.execute("SELECT COUNT(*) FROM customers").fetchone()[0] == 0:
-        cursor.executemany(
-            "INSERT INTO customers VALUES (?,?,?,?,?,?)", CUSTOMERS
-        )
-        cursor.executemany(
-            "INSERT INTO products VALUES (?,?,?,?,?)", PRODUCTS
-        )
-        cursor.executemany(
-            "INSERT INTO orders VALUES (?,?,?,?)", ORDERS
-        )
-        cursor.executemany(
-            "INSERT INTO order_items VALUES (?,?,?,?,?)", ORDER_ITEMS
-        )
+            if cursor.execute("SELECT COUNT(*) FROM customers").fetchone()[0] == 0:
+                cursor.executemany(
+                    "INSERT INTO customers VALUES (?,?,?,?,?,?)", CUSTOMERS
+                )
+                cursor.executemany(
+                    "INSERT INTO products VALUES (?,?,?,?,?)", PRODUCTS
+                )
+                cursor.executemany(
+                    "INSERT INTO orders VALUES (?,?,?,?)", ORDERS
+                )
+                cursor.executemany(
+                    "INSERT INTO order_items VALUES (?,?,?,?,?)", ORDER_ITEMS
+                )
 
-    conn.commit()
-    conn.close()
+            connection.commit()
+        except Exception:
+            connection.rollback()
+            raise
 
 
 if __name__ == "__main__":
     init_db()
     print(f"✅ Database created at {DB_PATH}")
-    conn = sqlite3.connect(DB_PATH)
-    for table in ["customers", "products", "orders", "order_items"]:
-        count = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
-        print(f"   {table}: {count} rows")
-    conn.close()
+    with closing(sqlite3.connect(DB_PATH)) as connection:
+        for table in ["customers", "products", "orders", "order_items"]:
+            count = connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+            print(f"   {table}: {count} rows")

@@ -7,10 +7,13 @@ venv/
 __pycache__/
 *.pyc
 
-# Database (auto-generated at runtime)
-data/ecommerce.db
+# Database files (auto-generated or uploaded at runtime)
+data/*.db
 
-# uv
+# Streamlit secrets
+.streamlit/secrets.toml
+
+# uv local files
 .python-version
 uv.lock
 
