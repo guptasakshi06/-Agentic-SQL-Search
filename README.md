@@ -17,14 +17,14 @@ Instead of hardcoding SQL, the agent follows a deliberate three-step process bef
 - **Schema Inspection:** Agent always checks the live schema before querying, never guesses column names
 - **Full Reasoning Trace:** Every tool call, query, and result is visible in the UI's Agent Reasoning expander
 - **Bundled Dataset:** Ships with a ready-to-use e-commerce SQLite database, no external setup required
-- **Bring Your Own Database:** Upload any SQLite `.db` file from the sidebar and the agent will inspect its schema and answer questions against it immediately
+- **Bring Your Own Database:** Upload a SQLite database up to 25 MB; each session gets an isolated, read-only temporary copy
 - **Sample Questions:** Sidebar includes 8 pre-built questions to get started immediately
 
 ## Tech Stack
 
 **Frameworks & Libraries:**
-- [LangGraph](https://langchain-ai.github.io/langgraph/): ReAct agent via `create_react_agent`
-- [LangChain](https://python.langchain.com/): Tool definitions and LLM integration
+- [LangChain](https://python.langchain.com/): Agent orchestration via `create_agent`, tool definitions, and LLM integration
+- [LangGraph](https://langchain-ai.github.io/langgraph/): Agent execution runtime used by LangChain
 - [Streamlit](https://streamlit.io/): Interactive web UI with chat interface
 
 **Models (via Google AI / Gemini API):**
@@ -65,14 +65,13 @@ User Question
 ```
 
 **Tools:**
-- **`load_skill`**: reads `skills/sql.md`, which contains SQLite syntax rules, common query patterns, and schema reference
+- **`load_skill`**: reads the allowlisted `skills/sql.md` guide with SQLite syntax, safety rules, and efficient query patterns
 - **`get_schema`**: queries `sqlite_master` and `PRAGMA table_info` to return the live database structure
 - **`execute_sql`**: runs any SELECT query and returns a formatted table (SELECT-only for safety)
 
 ## Prerequisites
 
-- Python 3.12 or higher
-- [uv](https://docs.astral.sh/uv/)
+- Python 3.12
 - A Google AI Studio API key
 
 ## Installation
@@ -80,8 +79,8 @@ User Question
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/guptasakshi06/-Agentic-SQL-Search
-
+git clone https://github.com/guptasakshi06/-Agentic-SQL-Search agentic-sql-search
+cd agentic-sql-search
 ```
 
 ### 2. Set Up Environment Variables
@@ -98,16 +97,18 @@ GEMINI_API_KEY=your_google_ai_studio_key_here
 
 Get your API key at [Google AI Studio](https://aistudio.google.com/app/apikey).
 
-### 3. Install Dependencies
+### 3. Create an Environment and Install Dependencies
 
 ```bash
-uv sync
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+python -m pip install -r requirements.txt
 ```
 
 ## Usage
 
 ```bash
-uv run streamlit run app.py
+streamlit run app.py
 ```
 
 Navigate to `http://localhost:8501` in your browser.
@@ -115,6 +116,29 @@ Navigate to `http://localhost:8501` in your browser.
 The bundled e-commerce SQLite database is created automatically on first run. No extra setup needed.
 
 To query your own database, select **Upload Your Own** in the sidebar and upload any `.db`, `.sqlite`, or `.sqlite3` file. The agent will inspect the schema automatically and you can start asking questions right away.
+
+> Uploaded databases are kept in a session-scoped temporary directory and opened read-only. Schema details, generated queries, and returned rows are sent to Google Gemini to produce the answer, so do not upload sensitive data.
+
+## Deploy on Streamlit Community Cloud
+
+1. In Streamlit Community Cloud, create a new app from this repository.
+2. Select branch **`main`** and entrypoint **`app.py`**.
+3. In **Advanced settings**, choose **Python 3.12**.
+4. Add this secret:
+
+```toml
+GEMINI_API_KEY = "your_google_ai_studio_key_here"
+```
+
+5. Deploy the app. No external database or system package is required.
+
+If the app is public, monitor or restrict Gemini API usage because visitors consume the API quota associated with this key.
+
+## Tests
+
+```bash
+python -m unittest discover -v
+```
 
 **Example questions to try (bundled dataset):**
 - "Who are the top 5 customers by total spend?"
@@ -131,22 +155,22 @@ agentic_sql_search/
 ├── database.py         # SQLite schema and sample data seeder
 ├── skills/
 │   └── sql.md          # SQL syntax rules and query patterns loaded by the agent
+├── tests/
+│   ├── __init__.py
+│   ├── test_agent.py   # Read-only SQL, isolation, and result-limit tests
+│   └── test_database.py # Concurrent database initialization test
 ├── assets/
 │   └── demo.png        # App screenshot
 ├── data/
 │   └── ecommerce.db    # SQLite database (auto-generated, gitignored)
 ├── .env.example        # API key template
-├── pyproject.toml      # Project dependencies (uv)
+├── requirements.txt   # Pinned deployment dependencies
 └── README.md
 ```
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](../../LICENSE) file for details.
 
 ---
 
